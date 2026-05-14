@@ -118,8 +118,8 @@ export default function ListProducts() {
         ? product.category.toLowerCase().includes(searchCategory.toLowerCase())
         : true;
 
-      const matchesMin = Number.isFinite(min) && min !== null ? product.price >= min : true;
-      const matchesMax = Number.isFinite(max) && max !== null ? product.price <= max : true;
+      const matchesMin = Number.isFinite(min) ? product.price >= (min as number) : true;
+      const matchesMax = Number.isFinite(max) ? product.price <= (max as number) : true;
 
       return matchesName && matchesCategory && matchesMin && matchesMax;
     });

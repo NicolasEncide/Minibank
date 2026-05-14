@@ -74,8 +74,9 @@ export default function Cart() {
     try {
       setSaving(true);
       await action();
-    } catch (error: any) {
-      Alert.alert("Erro", error?.message ?? "Não foi possível concluir a ação.");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Não foi possível concluir a ação.";
+      Alert.alert("Erro", message);
     } finally {
       setSaving(false);
     }

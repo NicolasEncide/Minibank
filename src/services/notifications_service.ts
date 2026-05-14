@@ -7,7 +7,7 @@ const VAPID_KEY = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
 
 export async function registerFcmTokenForCurrentUser() {
   if (Platform.OS !== "web") {
-    return { success: false, message: "FCM no cliente foi habilitado para web neste projeto Expo." };
+    return { success: false, message: "FCM do cliente foi habilitado para web neste projeto Expo." };
   }
 
   const user = auth.currentUser;
