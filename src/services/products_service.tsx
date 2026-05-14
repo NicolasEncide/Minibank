@@ -1,23 +1,6 @@
 import { database } from "./connectionFirebase";
-import {
-  ref,
-  push,
-  get,
-  update,
-  remove,
-  onValue,
-  off,
-} from "firebase/database";
-
-export interface Product {
-  id?: string;
-  name: string;
-  category: string;
-  description: string;
-  price: number;
-  image?: string;
-  createdAt?: string;
-}
+import { ref, push, get, update, remove, onValue, off } from "firebase/database";
+import { Product } from "../models/Product";
 
 const PATH = "products";
 
@@ -46,7 +29,7 @@ export const productService = {
   listen(callback: (products: Product[]) => void) {
     const productsRef = ref(database, PATH);
 
-    const unsubscribe = onValue(productsRef, (snapshot) => {
+    onValue(productsRef, (snapshot) => {
       const data = snapshot.val();
 
       if (!data) {
