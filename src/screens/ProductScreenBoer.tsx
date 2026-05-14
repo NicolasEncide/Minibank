@@ -178,6 +178,7 @@ return (
     </SafeAreaView>
   </SafeAreaProvider>
 );
+}
 
 const estilos = StyleSheet.create({
   container: {
@@ -406,4 +407,3 @@ const estilos = StyleSheet.create({
 //     fontWeight: 'bold'
 //   }
 // });
-}

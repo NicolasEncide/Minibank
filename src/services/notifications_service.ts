@@ -1,8 +1,7 @@
 import { Platform } from "react-native";
 import { getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
-import { auth, database } from "./connectionFirebase";
+import app, { auth, database } from "./connectionFirebase";
 import { ref, update } from "firebase/database";
-import app from "./connectionFirebase";
 
 const VAPID_KEY = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
 

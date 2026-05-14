@@ -101,7 +101,7 @@ export default function FormProduct() {
       }
 
       setTimeout(() => navigation.goBack(), 800);
-    } catch (error) {
+    } catch {
       setMessage("Erro ao salvar produto");
     } finally {
       setSaving(false);
