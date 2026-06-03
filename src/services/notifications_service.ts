@@ -5,9 +5,16 @@ import { ref, update } from "firebase/database";
 
 const VAPID_KEY = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
 
+async function ensureServiceWorkerRegistration() {
+  if (Platform.OS !== "web") return null;
+  if (!("serviceWorker" in navigator)) return null;
+
+  return navigator.serviceWorker.register("/firebase-messaging-sw.js");
+}
+
 export async function registerFcmTokenForCurrentUser() {
   if (Platform.OS !== "web") {
-    return { success: false, message: "FCM do cliente foi habilitado para web neste projeto Expo." };
+    return { success: false, message: "FCM foi configurado para web neste projeto Expo." };
   }
 
   const user = auth.currentUser;
@@ -29,10 +36,12 @@ export async function registerFcmTokenForCurrentUser() {
     return { success: false, message: "Permissão de notificação negada." };
   }
 
+  const serviceWorkerRegistration = await ensureServiceWorkerRegistration();
   const messaging = getMessaging(app);
 
   const token = await getToken(messaging, {
     vapidKey: VAPID_KEY,
+    serviceWorkerRegistration: serviceWorkerRegistration ?? undefined,
   });
 
   if (!token) {
@@ -47,7 +56,7 @@ export async function registerFcmTokenForCurrentUser() {
   return { success: true, message: "Token FCM salvo com sucesso." };
 }
 
-export async function enableForegroundNotifications(handler?: (payload: any) => void) {
+export async function enableForegroundNotifications(handler?: (payload: unknown) => void) {
   if (Platform.OS !== "web") return null;
 
   const supported = await isSupported();

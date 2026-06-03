@@ -16,6 +16,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { getAuth } from "firebase/auth";
 import { cartService, CartData, CartItem } from "../services/cart_service";
 import { ShippingMode } from "../services/shipping_service";
+import { notifyCheckoutFinished, triggerSimpleNotification } from "../services/cart_notifications_service";
 
 const EMPTY_CART: CartData = {
   items: [],
@@ -68,12 +69,15 @@ export default function Cart() {
     });
   }
 
-  async function withSave(action: () => Promise<void>) {
+  async function withSave(action: () => Promise<void>, onSuccess?: () => Promise<void> | void) {
     if (!uid || saving) return;
 
     try {
       setSaving(true);
       await action();
+      if (onSuccess) {
+        await onSuccess();
+      }
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Não foi possível concluir a ação.";
       Alert.alert("Erro", message);
@@ -87,7 +91,13 @@ export default function Cart() {
 
     if (Platform.OS === "web") {
       if (window.confirm("Deseja limpar todo o carrinho?")) {
-        withSave(() => cartService.clear(uid));
+        withSave(() => cartService.clear(uid), async () => {
+          await triggerSimpleNotification(uid, {
+            title: "Carrinho limpo",
+            body: "Todos os itens do seu carrinho foram removidos.",
+            data: { type: "cart-cleared" },
+          });
+        });
       }
       return;
     }
@@ -97,9 +107,41 @@ export default function Cart() {
       {
         text: "Limpar",
         style: "destructive",
-        onPress: () => withSave(() => cartService.clear(uid)),
+        onPress: () =>
+          withSave(() => cartService.clear(uid), async () => {
+            await triggerSimpleNotification(uid, {
+              title: "Carrinho limpo",
+              body: "Todos os itens do seu carrinho foram removidos.",
+              data: { type: "cart-cleared" },
+            });
+          }),
       },
     ]);
+  }
+
+  function getItemsCount() {
+    return cart.items.reduce((acc, item) => acc + item.quantity, 0);
+  }
+
+  async function finalizeCart() {
+    if (!uid) return;
+    if (cart.items.length === 0) {
+      Alert.alert("Carrinho vazio", "Adicione itens antes de finalizar.");
+      return;
+    }
+
+    const total = cart.summary.total;
+    const itemsCount = getItemsCount();
+
+    await withSave(
+      async () => {
+        await cartService.clear(uid);
+      },
+      async () => {
+        await notifyCheckoutFinished(uid, total, itemsCount);
+        Alert.alert("Sucesso", "Pedido finalizado e notificação enviada.");
+      }
+    );
   }
 
   function renderItem({ item }: { item: CartItem }) {
@@ -139,7 +181,15 @@ export default function Cart() {
 
             <TouchableOpacity
               style={styles.removeButton}
-              onPress={() => withSave(() => cartService.removeItem(uid!, item.productId))}
+              onPress={() =>
+                withSave(() => cartService.removeItem(uid!, item.productId), async () => {
+                  await triggerSimpleNotification(uid!, {
+                    title: "Item removido",
+                    body: `${item.product.name} foi removido do carrinho.`,
+                    data: { type: "cart-item-removed", productId: item.productId },
+                  });
+                })
+              }
               disabled={saving}
             >
               <Text style={styles.removeButtonText}>Excluir</Text>
@@ -245,7 +295,15 @@ export default function Cart() {
 
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={() => withSave(() => cartService.applyCoupon(uid, couponInput))}
+                onPress={() =>
+                  withSave(() => cartService.applyCoupon(uid, couponInput), async () => {
+                    await triggerSimpleNotification(uid, {
+                      title: "Cupom aplicado",
+                      body: `Cupom ${couponInput.toUpperCase()} aplicado com sucesso.`,
+                      data: { type: "coupon-applied", couponCode: couponInput.toUpperCase() },
+                    });
+                  })
+                }
                 disabled={saving}
               >
                 <Text style={styles.actionButtonText}>Aplicar</Text>
@@ -273,6 +331,10 @@ export default function Cart() {
 
             <TouchableOpacity style={styles.clearButton} onPress={confirmClear} disabled={saving}>
               <Text style={styles.clearButtonText}>Limpar carrinho</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.checkoutButton} onPress={finalizeCart} disabled={saving}>
+              <Text style={styles.checkoutButtonText}>Finalizar compra</Text>
             </TouchableOpacity>
           </View>
         </ImageBackground>
@@ -464,6 +526,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   clearButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+  checkoutButton: {
+    marginTop: 10,
+    backgroundColor: "#198d62",
+    borderRadius: 8,
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  checkoutButtonText: {
     color: "#fff",
     fontWeight: "bold",
   },
