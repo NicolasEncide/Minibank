@@ -3,7 +3,7 @@ import { getMessaging, getToken, isSupported, onMessage } from "firebase/messagi
 import app, { auth, database } from "./connectionFirebase";
 import { ref, update } from "firebase/database";
 
-const VAPID_KEY = process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY;
+const VAPID_KEY = "BPh_EnjPXnrZFJi9WChFcXyEpsvzUtVVJbPtvUbOlejFQe087mQEQ4eoVbpty7GL0zm73CMHVXroLnRxrtHdqHo";
 
 async function ensureServiceWorkerRegistration() {
   if (Platform.OS !== "web") return null;
