@@ -9,7 +9,8 @@ async function ensureServiceWorkerRegistration() {
   if (Platform.OS !== "web") return null;
   if (!("serviceWorker" in navigator)) return null;
 
-  return navigator.serviceWorker.register("/firebase-messaging-sw.js");
+  await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+  return navigator.serviceWorker.ready;
 }
 
 export async function registerFcmTokenForCurrentUser() {
@@ -39,10 +40,19 @@ export async function registerFcmTokenForCurrentUser() {
   const serviceWorkerRegistration = await ensureServiceWorkerRegistration();
   const messaging = getMessaging(app);
 
-  const token = await getToken(messaging, {
-    vapidKey: VAPID_KEY,
-    serviceWorkerRegistration: serviceWorkerRegistration ?? undefined,
-  });
+  let token = "";
+
+  try {
+    token = await getToken(messaging, {
+      vapidKey: VAPID_KEY,
+      serviceWorkerRegistration: serviceWorkerRegistration ?? undefined,
+    });
+  } catch {
+    return {
+      success: false,
+      message: "Falha ao registrar o Service Worker para notificações push.",
+    };
+  }
 
   if (!token) {
     return { success: false, message: "Não foi possível gerar token FCM." };
