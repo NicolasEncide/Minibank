@@ -61,7 +61,7 @@ export default function EditProfile({ navigation }: any) {
     .catch(() => {
       setLoading(false);
     });
-  }, [user]);
+  }, [navigation, user]);
 
   async function handleUpdate() {
     if (!name || !email || !cellphone) {

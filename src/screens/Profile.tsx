@@ -35,7 +35,7 @@ export default function Profile({ navigation }: any) {
     });
 
     return () => unsubscribe();
-  });
+  }, [navigation]);
 
   async function handleLogout() {
     const auth = getAuth();

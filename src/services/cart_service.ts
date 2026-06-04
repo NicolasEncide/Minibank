@@ -40,7 +40,6 @@ const COUPONS: CartCoupon[] = [
     code: "DESC10",
     type: "percent",
     value: 10,
-    minSubtotal: 50,
     expiresAt: "2099-12-31T23:59:59.000Z",
     active: true,
   },
@@ -48,7 +47,6 @@ const COUPONS: CartCoupon[] = [
     code: "MENOS20",
     type: "fixed",
     value: 20,
-    minSubtotal: 120,
     expiresAt: "2099-12-31T23:59:59.000Z",
     active: true,
   },
@@ -95,7 +93,6 @@ function calculateDiscount(subtotal: number, couponCode: string) {
 
   if (!coupon || !coupon.active) return 0;
   if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) return 0;
-  if (coupon.minSubtotal && subtotal < coupon.minSubtotal) return 0;
 
   if (coupon.type === "percent") {
     return (subtotal * coupon.value) / 100;
@@ -112,8 +109,10 @@ function normalizeCart(raw: Partial<CartData> | null | undefined): CartData {
 
   const subtotal = calculateSubtotal(items);
   const shippingResult = calculateShipping(shippingMode, cep);
-  const discount = Math.min(calculateDiscount(subtotal, couponCode), subtotal);
-  const total = Math.max(0, subtotal + shippingResult.shipping - discount);
+  const hasItems = items.length > 0;
+  const shipping = hasItems ? shippingResult.shipping : 0;
+  const discount = hasItems ? Math.min(calculateDiscount(subtotal, couponCode), subtotal) : 0;
+  const total = Math.max(0, subtotal + shipping - discount);
 
   return {
     items,
@@ -123,7 +122,7 @@ function normalizeCart(raw: Partial<CartData> | null | undefined): CartData {
     couponCode,
     summary: {
       subtotal,
-      shipping: shippingResult.shipping,
+      shipping,
       discount,
       total,
     },
@@ -156,13 +155,6 @@ export const cartService = {
 
     if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
       return { valid: false, message: "Cupom expirado." };
-    }
-
-    if (coupon.minSubtotal && subtotal < coupon.minSubtotal) {
-      return {
-        valid: false,
-        message: `Subtotal mínimo para este cupom: R$ ${coupon.minSubtotal.toFixed(2)}`,
-      };
     }
 
     return { valid: true, message: "Cupom aplicado com sucesso." };
@@ -206,7 +198,9 @@ export const cartService = {
   },
 
   async addItem(uid: string, product: Product, quantity = 1) {
-    if (!product.id) {
+    const productId = product.id;
+
+    if (!productId) {
       throw new Error("Produto inválido para o carrinho.");
     }
 
@@ -214,13 +208,13 @@ export const cartService = {
 
     await runTransaction(cartRef, (current) => {
       const cart = normalizeCart(current);
-      const existing = cart.items.find((item) => item.productId === product.id);
+      const existing = cart.items.find((item) => item.productId === productId);
 
       if (existing) {
         existing.quantity += quantity;
       } else {
         cart.items.push({
-          productId: product.id,
+          productId,
           product,
           quantity,
         });

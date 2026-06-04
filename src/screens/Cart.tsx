@@ -26,9 +26,9 @@ const EMPTY_CART: CartData = {
   couponCode: "",
   summary: {
     subtotal: 0,
-    shipping: 15,
+    shipping: 0,
     discount: 0,
-    total: 15,
+    total: 0,
   },
   updatedAt: "",
 };
