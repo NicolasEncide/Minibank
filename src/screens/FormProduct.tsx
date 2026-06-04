@@ -18,10 +18,8 @@ import React, { useState } from "react";
 
 import { useNavigation, useRoute } from "@react-navigation/native";
 
-import {
-  productService,
-  Product,
-} from "../services/products_service";
+import { productService } from "../services/products_service";
+import { Product } from "../models/Product";
 
 export default function FormProduct() {
   const navigation = useNavigation<any>();
@@ -103,7 +101,7 @@ export default function FormProduct() {
       }
 
       setTimeout(() => navigation.goBack(), 800);
-    } catch (error) {
+    } catch {
       setMessage("Erro ao salvar produto");
     } finally {
       setSaving(false);
