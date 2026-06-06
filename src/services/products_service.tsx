@@ -1,60 +1,102 @@
-import { database } from "./connectionFirebase";
-import { ref, push, get, update, remove, onValue, off } from "firebase/database";
 import { Product } from "../models/Product";
 
-const PATH = "products";
+const BASE_URL = process.env.EXPO_PUBLIC_MOCKAPI_BASE_URL ?? "";
+const RESOURCE = process.env.EXPO_PUBLIC_MOCKAPI_PRODUCTS_RESOURCE ?? "products";
+
+function getResourceUrl(id?: string) {
+  if (!BASE_URL) {
+    throw new Error(
+      "MockAPI não configurado. Defina EXPO_PUBLIC_MOCKAPI_BASE_URL no arquivo .env."
+    );
+  }
+
+  const base = BASE_URL.replace(/\/+$/, "");
+  const path = id ? `${RESOURCE}/${id}` : RESOURCE;
+
+  return `${base}/${path}`;
+}
+
+async function request<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    headers: { "Content-Type": "application/json" },
+    ...init,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Erro na requisição (${response.status}).`);
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  return (await response.json()) as T;
+}
+
+function normalizeProduct(raw: any): Product {
+  return {
+    id: raw?.id != null ? String(raw.id) : undefined,
+    name: raw?.name ?? "",
+    category: raw?.category ?? "",
+    description: raw?.description ?? "",
+    price: Number(raw?.price) || 0,
+    image: raw?.image ?? "",
+    createdAt: raw?.createdAt,
+  };
+}
+
+function serializeProduct(product: Product) {
+  return {
+    name: product.name,
+    category: product.category,
+    description: product.description,
+    price: Number(product.price) || 0,
+    image: product.image ?? "",
+  };
+}
 
 export const productService = {
-  async create(product: Product) {
-    const productRef = ref(database, PATH);
-
-    await push(productRef, {
-      ...product,
-      createdAt: new Date().toISOString(),
-    });
+  isConfigured() {
+    return Boolean(BASE_URL);
   },
 
   async getAll(): Promise<Product[]> {
-    const snapshot = await get(ref(database, PATH));
-    const data = snapshot.val();
+    const data = await request<any[]>(getResourceUrl());
 
-    if (!data) return [];
+    if (!Array.isArray(data)) return [];
 
-    return Object.entries(data).map(([id, value]) => ({
-      id,
-      ...(value as Product),
-    }));
+    return data.map(normalizeProduct);
   },
 
-  listen(callback: (products: Product[]) => void) {
-    const productsRef = ref(database, PATH);
+  async getById(id: string): Promise<Product> {
+    const data = await request<any>(getResourceUrl(id));
+    return normalizeProduct(data);
+  },
 
-    onValue(productsRef, (snapshot) => {
-      const data = snapshot.val();
-
-      if (!data) {
-        callback([]);
-        return;
-      }
-
-      const products = Object.entries(data).map(([id, value]) => ({
-        id,
-        ...(value as Product),
-      }));
-
-      callback(products);
+  async create(product: Product): Promise<Product> {
+    const body = JSON.stringify({
+      ...serializeProduct(product),
+      createdAt: new Date().toISOString(),
     });
 
-    return () => off(productsRef);
+    const data = await request<any>(getResourceUrl(), {
+      method: "POST",
+      body,
+    });
+
+    return normalizeProduct(data);
   },
 
-  async updateProduct(id: string, product: Product) {
-    const productRef = ref(database, `${PATH}/${id}`);
-    await update(productRef, product);
+  async updateProduct(id: string, product: Product): Promise<Product> {
+    const data = await request<any>(getResourceUrl(id), {
+      method: "PUT",
+      body: JSON.stringify(serializeProduct(product)),
+    });
+
+    return normalizeProduct(data);
   },
 
-  async delete(id: string) {
-    const productRef = ref(database, `${PATH}/${id}`);
-    await remove(productRef);
+  async delete(id: string): Promise<void> {
+    await request<void>(getResourceUrl(id), { method: "DELETE" });
   },
 };
