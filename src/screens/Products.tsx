@@ -14,9 +14,9 @@ import {
 
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { getAuth } from "firebase/auth";
 
 import { productService } from "../services/products_service";
@@ -38,14 +38,25 @@ export default function ListProducts() {
 
   const auth = getAuth();
 
-  useEffect(() => {
-    const unsubscribe = productService.listen((products) => {
-      setProducts(products);
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await productService.getAll();
+      setProducts(data);
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Não foi possível carregar os produtos.";
+      Alert.alert("Erro", message);
+    } finally {
       setLoading(false);
-    });
-
-    return unsubscribe;
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadProducts();
+    }, [loadProducts])
+  );
 
   function confirmDelete(id: string) {
     if (Platform.OS === "web") {
@@ -69,6 +80,11 @@ export default function ListProducts() {
     try {
       setDeletingId(id);
       await productService.delete(id);
+      await loadProducts();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Não foi possível excluir o produto.";
+      Alert.alert("Erro", message);
     } finally {
       setDeletingId(null);
     }
