@@ -22,6 +22,7 @@ import { getAuth } from "firebase/auth";
 import { productService } from "../services/products_service";
 import { Product } from "../models/Product";
 import { cartService } from "../services/cart_service";
+import { triggerSimpleNotification } from "../services/cart_notifications_service";
 
 export default function ListProducts() {
   const navigation = useNavigation<any>();
@@ -90,29 +91,45 @@ export default function ListProducts() {
     }
   }
 
-  async function handleAddToCart(product: Product) {
-    if (!product.id) {
-      Alert.alert("Erro", "Produto inválido.");
-      return;
-    }
-
-    const user = auth.currentUser;
-
-    if (!user) {
-      Alert.alert("Atenção", "Faça login para adicionar itens ao carrinho.");
-      return;
-    }
-
-    try {
-      setAddingId(product.id);
-      await cartService.addItem(user.uid, product, 1);
-      Alert.alert("Sucesso", "Produto adicionado ao carrinho.");
-    } catch {
-      Alert.alert("Erro", "Não foi possível adicionar ao carrinho.");
-    } finally {
-      setAddingId(null);
-    }
+async function handleAddToCart(product: Product) {
+  if (!product.id) {
+    Alert.alert("Erro", "Produto inválido.");
+    return;
   }
+
+  const user = auth.currentUser;
+
+  if (!user) {
+    Alert.alert("Atenção", "Faça login para adicionar itens ao carrinho.");
+    return;
+  }
+
+  try {
+    setAddingId(product.id);
+
+    await cartService.addItem(user.uid, product, 1);
+
+    await triggerSimpleNotification(user.uid, {
+      title: "Produto adicionado",
+      body: `${product.name} foi adicionado ao carrinho.`,
+      data: {
+        type: "cart-item-added",
+        productId: product.id,
+      },
+    });
+
+    Alert.alert("Sucesso", "Produto adicionado ao carrinho.");
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Não foi possível adicionar ao carrinho.";
+
+    Alert.alert("Erro", message);
+  } finally {
+    setAddingId(null);
+  }
+}
 
   function formatPrice(value: number) {
     return value.toLocaleString("pt-BR", {
@@ -302,7 +319,7 @@ const styles = StyleSheet.create({
   },
   image: {
     width: "100%",
-    height: 220,
+    height: 250,
     borderRadius: 10,
     marginBottom: 10,
   },
