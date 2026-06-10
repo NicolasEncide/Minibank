@@ -138,7 +138,7 @@ export default function Cart() {
         await cartService.clear(uid);
       },
       async () => {
-        await notifyCheckoutFinished(uid, total, itemsCount);
+        await notifyCheckoutFinished(uid, total, itemsCount, cart.items);
         Alert.alert("Sucesso", "Pedido finalizado e notificação enviada.");
       }
     );
